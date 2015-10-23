@@ -436,10 +436,13 @@ def machine_action(request):
     """
     # Request must pass a CSRF test
     check_csrf_token(request)
-    action = getattr(request.cloud_sessions[request.current_org],
-                     '{}_machine'.format(request.params['action']), None)
-    if not callable(action):
+    # Check that we have an allowed action
+    action = request.params['action']
+    if action not in ["start", "destroy", "restart", "delete"]:
         raise HTTPBadRequest()
+    # Convert the name to a callable
+    action = getattr(request.cloud_sessions[request.current_org],
+                     '{}_machine'.format(action), None)
     action(request.matchdict['id'])
     request.session.flash('Action completed successfully', 'success')
     return HTTPSeeOther(location = request.route_url('machines'))
