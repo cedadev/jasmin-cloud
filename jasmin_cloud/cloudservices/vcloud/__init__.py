@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 import requests
 from jinja2 import Environment, FileSystemLoader
 
-from .. import NATPolicy, MachineStatus, Image, HardDisk, Machine, Session
+from .. import NATPolicy, MachineStatus, Image, HardDisk, Machine, Quota, Session
 from ..exceptions import *
 
 
@@ -409,6 +409,38 @@ class VCloudSession(Session):
         # Add the namespace to the permission as the key into metadata
         #   If the key is not present, treat that as having value 0
         return bool(meta.get('JASMIN.{}'.format(permission.upper()), 0))
+
+    def get_quotas(self):
+        """
+        See :py:meth:`jasmin_cloud.cloudservices.Session.get_quotas`.
+        """
+        # We need to get the VDC for the org
+        session = ET.fromstring(self.api_request('GET', 'session').text)
+        org_ref = session.find('.//vcd:Link[@type="application/vnd.vmware.vcloud.org+xml"]', _NS)
+        if org_ref is None:
+            raise BadConfigurationError('Unable to find organisation for user')
+        org = ET.fromstring(self.api_request('GET', org_ref.attrib['href']).text)
+        vdc_ref = org.find('.//vcd:Link[@type="application/vnd.vmware.vcloud.vdc+xml"]', _NS)
+        if vdc_ref is None:
+            raise BadConfigurationError('Organisation has no VDCs')
+        vdc = ET.fromstring(self.api_request('GET', vdc_ref.attrib['href']).text)
+        cpu_info = vdc.find('.//vcd:ComputeCapacity/vcd:Cpu', _NS)
+        ram_info = vdc.find('.//vcd:ComputeCapacity/vcd:Memory', _NS)
+        # Convert CPU MHz into number of CPUs
+        # Unfortunately, <VCpuInMhz> is only available on <AdminVdc> elements, which
+        # we can't get as a regular user
+        # So, we assume a default of 2600, but allow it to be overridden by vdc
+        # metadata
+        cpu_mhz = self.get_metadata(vdc.attrib['href']).get('JASMIN.CPU_MHZ', 2600)
+        cpu_used = int(cpu_info.find('./vcd:Used', _NS).text) // cpu_mhz
+        cpu_limit = int(cpu_info.find('./vcd:Limit', _NS).text) // cpu_mhz
+        # Convert RAM info to GB rather than MB
+        ram_used = int(ram_info.find('./vcd:Used', _NS).text) / 1024
+        ram_limit = int(ram_info.find('./vcd:Limit', _NS).text) / 1024
+        return {
+            'CPU' : Quota('CPU', None, cpu_used, cpu_limit),
+            'RAM' : Quota('RAM', 'GB', ram_used, ram_limit),
+        }
 
     def list_images(self):
         """

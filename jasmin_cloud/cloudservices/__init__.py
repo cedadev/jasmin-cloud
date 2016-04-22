@@ -210,6 +210,30 @@ class Machine(namedtuple('MachineProps', ['id', 'name', 'status',
     """
 
 
+class Quota(namedtuple('QuotaProps', ['resource', 'units', 'used', 'limit'])):
+    """
+    Represents a quota for a session.
+
+    .. py:attribute:: resource
+
+        The resource that the quota is for. One of ``CPU``, ``RAM`` or ``STORAGE``.
+
+    .. py:attribute:: units
+
+        The units that the quota is given in (e.g. ``GB``).
+
+        If the quota is 'unit-less', e.g. number of CPUs, this will be None.
+
+    .. py:attribute:: used
+
+        The amount of the quota that is used.
+
+    .. py:attribute:: limit
+
+        The amount of the resource that is available.
+    """
+
+
 class Session(metaclass = abc.ABCMeta):
     """
     Abstract base class for an authenticated session with a cloud provider,
@@ -253,6 +277,15 @@ class Session(metaclass = abc.ABCMeta):
 
         :param permission: The permission to test for
         :returns: ``True`` if the session has the permission, ``False`` otherwise
+        """
+
+    @abc.abstractmethod
+    def get_quotas(self):
+        """
+        Returns information about the CPU, RAM and storage quotas for the session.
+
+        :returns: A dictionary containing :py:class:`Quota` objects indexed by
+                  resource
         """
 
     @abc.abstractmethod
