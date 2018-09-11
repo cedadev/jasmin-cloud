@@ -15,7 +15,7 @@ jmespath==0.9.3
 jsonpatch==1.23
 jsonpointer==2.0
 keystoneauth1==3.9.0
-ldap3==2.5
+ldap3==2.5.1
 munch==2.3.2
 netifaces==0.10.7
 openstacksdk==0.16.0
