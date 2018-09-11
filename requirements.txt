@@ -6,7 +6,7 @@ deprecation==2.0.5
 Django==2.0.7
 djangorestframework==3.8.2
 docutils==0.14
-dogpile.cache==0.6.6
+dogpile.cache==0.6.7
 idna==2.7
 iso8601==0.1.12
 -e git+https://github.com/cedadev/jasmin-django-utils.git@224113b3f5c3f638b99b97e16af51759fe95ac7a#egg=jasmin_django_utils
