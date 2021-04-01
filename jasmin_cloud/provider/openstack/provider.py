@@ -646,11 +646,14 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.delete_machine`.
         """
+        caas_machine = True if machine.previsioned_by_caas and machine.previsioned_by_caas == 1 else False
+
         machine = machine.id if isinstance(machine, dto.Machine) else machine
         self._log("Deleting machine '%s'", machine)
         # First, delete any associated ports
-        for port in self._connection.network.ports.all(device_id = machine):
-            port._delete()
+        if not caas_machine:
+            for port in self._connection.network.ports.all(device_id = machine):
+                port._delete()
         self._connection.compute.servers.delete(machine)
         try:
             return self.find_machine(machine)
