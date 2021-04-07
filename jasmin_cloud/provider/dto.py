@@ -75,7 +75,7 @@ class Size(namedtuple('Size', ['id', 'name', 'cpus', 'ram', 'disk'])):
 class Machine(namedtuple('Machine', ['id', 'name', 'image', 'size',
                                      'status', 'power_state', 'task',
                                      'internal_ip', 'external_ip', 'nat_allowed',
-                                     'attached_volume_ids', 'owner', 'created', 'previsioned_by_caas'])):
+                                     'attached_volume_ids', 'owner', 'created', 'provisioned_by_caas'])):
     """
     Represents a machine in a tenancy.
 
@@ -93,7 +93,7 @@ class Machine(namedtuple('Machine', ['id', 'name', 'image', 'size',
         attached_volume_ids: A tuple of ids of attached volumes for the machine.
         owner: The username of the user who deployed the machine.
         created: The `datetime` at which the machine was deployed.
-        previsioned_by_caas: 1 if the machine was previsioned by caas, 0 otherwise.
+        provisioned_by_caas: 1 if the machine was provisioned by caas, 0 otherwise.
     """
     class Status(namedtuple('Status', ['type', 'name', 'details'])):
         """
