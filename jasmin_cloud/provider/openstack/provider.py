@@ -470,7 +470,7 @@ class ScopedSession(base.ScopedSession):
             size = None
         # Try to get provisioned_by_caas from the machine metadata
         try:
-            provisioned_by_caas = bool(int(api_server.metadata['provisioned_by_caas']))
+            provisioned_by_caas = bool(int(api_server.metadata['jasmin_provisioned_by_caas']))
         except (KeyError, TypeError):
             provisioned_by_caas = False
         # Try to get nat_allowed from the machine metadata
@@ -655,10 +655,7 @@ class ScopedSession(base.ScopedSession):
         machine = machine if isinstance(machine, dto.Machine) else self.find_machine(machine)
         self._log("Deleting machine '%s'", machine.id)
         # First, delete any associated ports
-        try:
-            if not machine.provisioned_by_caas:
-                raise AttributeError(f'{machine.id} not provisioned by CaaS.')
-        except (AttributeError, TypeError):
+        if not machine.provisioned_by_caas:
             for port in self._connection.network.ports.all(device_id = machine.id):
                 port._delete()
         self._connection.compute.servers.delete(machine.id)
