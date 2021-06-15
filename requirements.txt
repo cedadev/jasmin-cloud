@@ -1,7 +1,7 @@
 asgiref==3.2.7
 certifi==2020.4.5.1
 chardet==3.0.4
-Django==3.0.6
+Django==3.1.12
 git+https://github.com/cedadev/django-settings-object.git@01351828ae73cea07404de0a38d5d868ecb75b59#egg=django_settings_object
 djangorestframework==3.11.0
 docutils==0.16
