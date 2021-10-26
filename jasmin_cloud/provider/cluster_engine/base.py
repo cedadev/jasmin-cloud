@@ -7,6 +7,7 @@ class Engine:
     """
     Base class for a cluster engine.
     """
+
     def create_manager(self, username, tenancy):
         """
         Creates a cluster manager for the given tenancy.
@@ -25,6 +26,7 @@ class ClusterManager:
     """
     Base class for a tenancy-scoped cluster manager.
     """
+
     def cluster_types(self):
         """
         Lists the available cluster types.

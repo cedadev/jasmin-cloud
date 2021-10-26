@@ -13,6 +13,7 @@ class AuthenticatedUser:
     """
     Fake user that is returned to represent an authenticated user
     """
+
     def __init__(self, username):
         self.username = username
         self.is_authenticated = True
@@ -25,6 +26,7 @@ class TokenCookieAuthentication(BaseAuthentication):
     """
     Authentication backend that uses a token cookie for authentication.
     """
+
     def authenticate(self, request):
         # First, see if the token cookie is set
         token = request.get_signed_cookie(cloud_settings.TOKEN_COOKIE_NAME, None)

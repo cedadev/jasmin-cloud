@@ -3,16 +3,16 @@ This module defines data-transfer objects used by providers.
 """
 
 import enum
-from collections import namedtuple
+import io
 import json
 import re
-import io
+from collections import namedtuple
 
-import yaml
 import requests
+import yaml
 
 
-class Tenancy(namedtuple('Tenancy', ['id', 'name'])):
+class Tenancy(namedtuple("Tenancy", ["id", "name"])):
     """
     Represents a tenancy/organisation on a cloud provider.
 
@@ -22,7 +22,7 @@ class Tenancy(namedtuple('Tenancy', ['id', 'name'])):
     """
 
 
-class Quota(namedtuple('Quota', ['resource', 'units', 'allocated', 'used'])):
+class Quota(namedtuple("Quota", ["resource", "units", "allocated", "used"])):
     """
     Represents a quota available to a tenancy.
 
@@ -34,8 +34,9 @@ class Quota(namedtuple('Quota', ['resource', 'units', 'allocated', 'used'])):
     """
 
 
-class Image(namedtuple('Image', ['id', 'vm_type', 'name',
-                                 'is_public', 'nat_allowed', 'size'])):
+class Image(
+    namedtuple("Image", ["id", "vm_type", "name", "is_public", "nat_allowed", "size"])
+):
     """
     Represents an image available to a tenancy.
 
@@ -53,7 +54,7 @@ class Image(namedtuple('Image', ['id', 'vm_type', 'name',
     """
 
 
-class Size(namedtuple('Size', ['id', 'name', 'cpus', 'ram', 'disk'])):
+class Size(namedtuple("Size", ["id", "name", "cpus", "ram", "disk"])):
     """
     Represents a machine size available to a tenancy.
 
@@ -72,10 +73,26 @@ class Size(namedtuple('Size', ['id', 'name', 'cpus', 'ram', 'disk'])):
     """
 
 
-class Machine(namedtuple('Machine', ['id', 'name', 'image', 'size',
-                                     'status', 'power_state', 'task',
-                                     'internal_ip', 'external_ip', 'nat_allowed',
-                                     'attached_volume_ids', 'owner', 'created'])):
+class Machine(
+    namedtuple(
+        "Machine",
+        [
+            "id",
+            "name",
+            "image",
+            "size",
+            "status",
+            "power_state",
+            "task",
+            "internal_ip",
+            "external_ip",
+            "nat_allowed",
+            "attached_volume_ids",
+            "owner",
+            "created",
+        ],
+    )
+):
     """
     Represents a machine in a tenancy.
 
@@ -94,7 +111,8 @@ class Machine(namedtuple('Machine', ['id', 'name', 'image', 'size',
         owner: The username of the user who deployed the machine.
         created: The `datetime` at which the machine was deployed.
     """
-    class Status(namedtuple('Status', ['type', 'name', 'details'])):
+
+    class Status(namedtuple("Status", ["type", "name", "details"])):
         """
         Represents a machine status.
 
@@ -103,19 +121,22 @@ class Machine(namedtuple('Machine', ['id', 'name', 'image', 'size',
             name: A short string representation of the status.
             details: A string representing any details of the status, e.g. an error.
         """
+
         @enum.unique
         class Type(enum.Enum):
             """
             Enum representing the possible status types.
             """
-            BUILD = 'BUILD'
-            ACTIVE = 'ACTIVE'
-            ERROR = 'ERROR'
-            OTHER = 'OTHER'
+
+            BUILD = "BUILD"
+            ACTIVE = "ACTIVE"
+            ERROR = "ERROR"
+            OTHER = "OTHER"
 
 
-class Volume(namedtuple('Volume', ['id', 'name', 'status',
-                                   'size', 'machine_id', 'device'])):
+class Volume(
+    namedtuple("Volume", ["id", "name", "status", "size", "machine_id", "device"])
+):
     """
     Represents a volume attached to a machine.
 
@@ -129,22 +150,24 @@ class Volume(namedtuple('Volume', ['id', 'name', 'status',
         device: The device that the volume is attached on, or ``None`` if the
                 volume is not attached.
     """
+
     @enum.unique
     class Status(enum.Enum):
         """
         Enum representing the possible volume statuses.
         """
-        CREATING  = 'CREATING'
-        AVAILABLE = 'AVAILABLE'
-        ATTACHING = 'ATTACHING'
-        DETACHING = 'DETACHING'
-        IN_USE    = 'IN_USE'
-        DELETING  = 'DELETING'
-        ERROR     = 'ERROR'
-        OTHER     = 'OTHER'
+
+        CREATING = "CREATING"
+        AVAILABLE = "AVAILABLE"
+        ATTACHING = "ATTACHING"
+        DETACHING = "DETACHING"
+        IN_USE = "IN_USE"
+        DELETING = "DELETING"
+        ERROR = "ERROR"
+        OTHER = "OTHER"
 
 
-class ExternalIp(namedtuple('ExternalIp', ['external_ip', 'machine_id'])):
+class ExternalIp(namedtuple("ExternalIp", ["external_ip", "machine_id"])):
     """
     Represents an externally visible IP address.
 
@@ -155,11 +178,9 @@ class ExternalIp(namedtuple('ExternalIp', ['external_ip', 'machine_id'])):
     """
 
 
-class ClusterType(namedtuple('ClusterType', ['name',
-                                             'label',
-                                             'description',
-                                             'logo',
-                                             'parameters'])):
+class ClusterType(
+    namedtuple("ClusterType", ["name", "label", "description", "logo", "parameters"])
+):
     """
     Represents a cluster type.
 
@@ -170,11 +191,22 @@ class ClusterType(namedtuple('ClusterType', ['name',
         logo: The URL or data URI of the logo for the cluster type.
         parameters: A tuple of :py:class:`Parameter`s for the cluster type.
     """
-    class Parameter(namedtuple('Parameter', ['name', 'label', 'description',
-                                             'kind', 'options',
-                                             'immutable',
-                                             'required',
-                                             'default'])):
+
+    class Parameter(
+        namedtuple(
+            "Parameter",
+            [
+                "name",
+                "label",
+                "description",
+                "kind",
+                "options",
+                "immutable",
+                "required",
+                "default",
+            ],
+        )
+    ):
         """
         Represents a parameter required by a cluster type.
 
@@ -203,27 +235,27 @@ class ClusterType(namedtuple('ClusterType', ['name',
         """
         return cls(
             name,
-            spec.get('label', name),
-            spec.get('description'),
-            spec.get('logo'),
+            spec.get("label", name),
+            spec.get("description"),
+            spec.get("logo"),
             tuple(
                 cls.Parameter(
-                    param['name'],
-                    param.get('label', param['name']),
-                    param.get('description'),
-                    param['kind'],
-                    param.get('options', {}),
-                    param.get('immutable', False),
-                    param.get('required', True),
-                    param.get('default', None)
+                    param["name"],
+                    param.get("label", param["name"]),
+                    param.get("description"),
+                    param["kind"],
+                    param.get("options", {}),
+                    param.get("immutable", False),
+                    param.get("required", True),
+                    param.get("default", None),
                 )
-                for param in spec.get('parameters', [])
-            )
+                for param in spec.get("parameters", [])
+            ),
         )
 
     @classmethod
     def _open(cls, path):
-        if re.match(r'https?://', path):
+        if re.match(r"https?://", path):
             response = requests.get(path)
             response.raise_for_status()
             return io.StringIO(response.text)
@@ -261,10 +293,24 @@ class ClusterType(namedtuple('ClusterType', ['name',
             return cls.from_dict(name, yaml.safe_load(fh))
 
 
-class Cluster(namedtuple('Cluster', ['id', 'name', 'cluster_type',
-                                     'status', 'task', 'error_message',
-                                     'parameter_values', 'tags',
-                                     'created', 'updated', 'patched'])):
+class Cluster(
+    namedtuple(
+        "Cluster",
+        [
+            "id",
+            "name",
+            "cluster_type",
+            "status",
+            "task",
+            "error_message",
+            "parameter_values",
+            "tags",
+            "created",
+            "updated",
+            "patched",
+        ],
+    )
+):
     """
     Represents a cluster.
 
@@ -283,12 +329,14 @@ class Cluster(namedtuple('Cluster', ['id', 'name', 'cluster_type',
         updated: The `datetime` at which the cluster was updated.
         patched: The `datetime` at which the cluster was last patched.
     """
+
     @enum.unique
     class Status(enum.Enum):
         """
         Enum for the possible cluster statuses.
         """
-        CONFIGURING = 'CONFIGURING'
-        READY = 'READY'
-        DELETING = 'DELETING'
-        ERROR = 'ERROR'
+
+        CONFIGURING = "CONFIGURING"
+        READY = "READY"
+        DELETING = "DELETING"
+        ERROR = "ERROR"

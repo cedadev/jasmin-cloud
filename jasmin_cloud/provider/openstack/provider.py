@@ -2,43 +2,40 @@
 This module contains the provider implementation for OpenStack.
 """
 
-import functools
-import logging
 import base64
+import functools
 import hashlib
 import json
+import logging
 import random
 
 import dateutil.parser
-
 import rackit
 
+from .. import base, dto, errors
 from . import api
-from .. import base, errors, dto
-
 
 logger = logging.getLogger(__name__)
 
 
 _REPLACEMENTS = [
-    ('instance', 'machine'),
-    ('Instance', 'Machine'),
-    ('flavorRef', 'size'),
-    ('flavor', 'size'),
-    ('Flavor', 'Size')
+    ("instance", "machine"),
+    ("Instance", "Machine"),
+    ("flavorRef", "size"),
+    ("flavor", "size"),
+    ("Flavor", "Size"),
 ]
+
+
 def _replace_resource_names(message):
-    return functools.reduce(
-        lambda a, x: a.replace(x[0], x[1]),
-        _REPLACEMENTS,
-        message
-    )
+    return functools.reduce(lambda a, x: a.replace(x[0], x[1]), _REPLACEMENTS, message)
 
 
 def convert_exceptions(f):
     """
     Decorator that converts OpenStack API exceptions into errors from :py:mod:`..errors`.
     """
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -51,40 +48,41 @@ def convert_exceptions(f):
             if status_code == 400:
                 raise errors.BadInputError(message)
             elif status_code == 401:
-                raise errors.AuthenticationError('Your session has expired.')
+                raise errors.AuthenticationError("Your session has expired.")
             elif status_code == 403:
                 # Some quota exceeded errors get reported as permission denied (WHY???!!!)
                 # So report them as quota exceeded instead
-                if 'exceeded' in message.lower():
+                if "exceeded" in message.lower():
                     raise errors.QuotaExceededError(
-                        'Requested operation would exceed at least one quota. '
-                        'Please check your tenancy quotas.'
+                        "Requested operation would exceed at least one quota. "
+                        "Please check your tenancy quotas."
                     )
-                raise errors.PermissionDeniedError('Permission denied.')
+                raise errors.PermissionDeniedError("Permission denied.")
             elif status_code == 404:
                 raise errors.ObjectNotFoundError(message)
             elif status_code == 409:
                 # 409 (Conflict) has a lot of different sub-errors depending on
                 # the actual error text
-                if 'exceeded' in message.lower():
+                if "exceeded" in message.lower():
                     raise errors.QuotaExceededError(
-                        'Requested operation would exceed at least one quota. '
-                        'Please check your tenancy quotas.'
+                        "Requested operation would exceed at least one quota. "
+                        "Please check your tenancy quotas."
                     )
                 raise errors.InvalidOperationError(message)
             elif status_code == 413:
                 # The volume service uses 413 (Payload too large) for quota errors
-                if 'exceedsavailablequota' in message.lower():
+                if "exceedsavailablequota" in message.lower():
                     raise errors.QuotaExceededError(
-                        'Requested operation would exceed at least one quota. '
-                        'Please check your tenancy quotas.'
+                        "Requested operation would exceed at least one quota. "
+                        "Please check your tenancy quotas."
                     )
-                raise errors.CommunicationError('Unknown error with OpenStack API.')
+                raise errors.CommunicationError("Unknown error with OpenStack API.")
             else:
-                raise errors.CommunicationError('Unknown error with OpenStack API.')
+                raise errors.CommunicationError("Unknown error with OpenStack API.")
         except rackit.RackitError as exc:
-            logger.exception('Could not connect to OpenStack API.')
-            raise errors.CommunicationError('Could not connect to OpenStack API.')
+            logger.exception("Could not connect to OpenStack API.")
+            raise errors.CommunicationError("Could not connect to OpenStack API.")
+
     return wrapper
 
 
@@ -108,17 +106,21 @@ class Provider(base.Provider):
         cluster_engine: The :py:class:`~..cluster.base.Engine` to use for clusters.
                         If not given, clusters are disabled.
     """
-    provider_name = 'openstack'
 
-    def __init__(self, auth_url,
-                       domain = 'Default',
-                       interface = 'public',
-                       az_backdoor_net_map = None,
-                       backdoor_vnic_type = None,
-                       verify_ssl = True,
-                       cluster_engine = None):
+    provider_name = "openstack"
+
+    def __init__(
+        self,
+        auth_url,
+        domain="Default",
+        interface="public",
+        az_backdoor_net_map=None,
+        backdoor_vnic_type=None,
+        verify_ssl=True,
+        cluster_engine=None,
+    ):
         # Strip any trailing slashes from the auth URL
-        self._auth_url = auth_url.rstrip('/')
+        self._auth_url = auth_url.rstrip("/")
         self._domain = domain
         self._interface = interface
         self._az_backdoor_net_map = az_backdoor_net_map or dict()
@@ -131,20 +133,22 @@ class Provider(base.Provider):
         """
         See :py:meth:`.base.Provider.authenticate`.
         """
-        logger.info('Authenticating user %s with OpenStack', username)
+        logger.info("Authenticating user %s with OpenStack", username)
         # Create an API connection using the username and password
         auth_params = api.AuthParams().use_password(self._domain, username, password)
         try:
-            conn = api.Connection(self._auth_url, auth_params, self._interface, self._verify_ssl)
+            conn = api.Connection(
+                self._auth_url, auth_params, self._interface, self._verify_ssl
+            )
         except rackit.Unauthorized:
             # We want to use a different error message to convert_exceptions
-            raise errors.AuthenticationError('Invalid username or password.')
+            raise errors.AuthenticationError("Invalid username or password.")
         else:
             return UnscopedSession(
                 conn,
-                az_backdoor_net_map = self._az_backdoor_net_map,
-                backdoor_vnic_type = self._backdoor_vnic_type,
-                cluster_engine = self._cluster_engine
+                az_backdoor_net_map=self._az_backdoor_net_map,
+                backdoor_vnic_type=self._backdoor_vnic_type,
+                cluster_engine=self._cluster_engine,
             )
 
     @convert_exceptions
@@ -152,19 +156,21 @@ class Provider(base.Provider):
         """
         See :py:meth:`.base.Provider.from_token`.
         """
-        logger.info('Authenticating token with OpenStack')
+        logger.info("Authenticating token with OpenStack")
         auth_params = api.AuthParams().use_token(token)
         try:
-            conn = api.Connection(self._auth_url, auth_params, self._interface, self._verify_ssl)
+            conn = api.Connection(
+                self._auth_url, auth_params, self._interface, self._verify_ssl
+            )
         except (rackit.Unauthorized, rackit.NotFound):
             # Failing to validate a token is a 404 for some reason
-            raise errors.AuthenticationError('Your session has expired.')
+            raise errors.AuthenticationError("Your session has expired.")
         else:
             return UnscopedSession(
                 conn,
-                az_backdoor_net_map = self._az_backdoor_net_map,
-                backdoor_vnic_type = self._backdoor_vnic_type,
-                cluster_engine = self._cluster_engine
+                az_backdoor_net_map=self._az_backdoor_net_map,
+                backdoor_vnic_type=self._backdoor_vnic_type,
+                cluster_engine=self._cluster_engine,
             )
 
 
@@ -184,12 +190,16 @@ class UnscopedSession(base.UnscopedSession):
         cluster_engine: The :py:class:`~..cluster.base.Engine` to use for clusters.
                         If not given, clusters are disabled.
     """
-    provider_name = 'openstack'
 
-    def __init__(self, connection,
-                       az_backdoor_net_map = None,
-                       backdoor_vnic_type = None,
-                       cluster_engine = None):
+    provider_name = "openstack"
+
+    def __init__(
+        self,
+        connection,
+        az_backdoor_net_map=None,
+        backdoor_vnic_type=None,
+        cluster_engine=None,
+    ):
         self._connection = connection
         self._az_backdoor_net_map = az_backdoor_net_map or dict()
         self._backdoor_vnic_type = backdoor_vnic_type
@@ -212,9 +222,9 @@ class UnscopedSession(base.UnscopedSession):
         """
         See :py:meth:`.base.UnscopedSession.tenancies`.
         """
-        logger.info('[%s] Fetching available tenancies', self.username())
+        logger.info("[%s] Fetching available tenancies", self.username())
         projects = tuple(self._connection.projects.all())
-        logger.info('[%s] Found %s projects', self.username(), len(projects))
+        logger.info("[%s] Found %s projects", self.username(), len(projects))
         return tuple(dto.Tenancy(p.id, p.name) for p in projects if p.enabled)
 
     @convert_exceptions
@@ -229,21 +239,21 @@ class UnscopedSession(base.UnscopedSession):
                 tenancy = next(t for t in self.tenancies() if t.id == tenancy)
             except StopIteration:
                 raise errors.ObjectNotFoundError(
-                    'Could not find tenancy with ID {}'.format(tenancy)
+                    "Could not find tenancy with ID {}".format(tenancy)
                 )
-        logger.info('[%s] [%s] Creating scoped session', self.username(), tenancy.name)
+        logger.info("[%s] [%s] Creating scoped session", self.username(), tenancy.name)
         try:
             return ScopedSession(
                 self.username(),
                 tenancy,
                 self._connection.scoped_connection(tenancy.id),
-                az_backdoor_net_map = self._az_backdoor_net_map,
-                backdoor_vnic_type = self._backdoor_vnic_type,
-                cluster_engine = self._cluster_engine
+                az_backdoor_net_map=self._az_backdoor_net_map,
+                backdoor_vnic_type=self._backdoor_vnic_type,
+                cluster_engine=self._cluster_engine,
             )
         except (rackit.Unauthorized, rackit.Forbidden):
             raise errors.ObjectNotFoundError(
-                'Could not find tenancy with ID {}'.format(tenancy.id)
+                "Could not find tenancy with ID {}".format(tenancy.id)
             )
 
     def close(self):
@@ -272,14 +282,18 @@ class ScopedSession(base.ScopedSession):
         cluster_engine: The :py:class:`~.cluster_engine.base.ClusterEngine` to use for clusters.
                         If not given, clusters are disabled.
     """
-    provider_name = 'openstack'
 
-    def __init__(self, username,
-                       tenancy,
-                       connection,
-                       az_backdoor_net_map = None,
-                       backdoor_vnic_type = None,
-                       cluster_engine = None):
+    provider_name = "openstack"
+
+    def __init__(
+        self,
+        username,
+        tenancy,
+        connection,
+        az_backdoor_net_map=None,
+        backdoor_vnic_type=None,
+        cluster_engine=None,
+    ):
         self._username = username
         self._tenancy = tenancy
         self._connection = connection
@@ -287,11 +301,14 @@ class ScopedSession(base.ScopedSession):
         self._backdoor_vnic_type = backdoor_vnic_type
         self._cluster_engine = cluster_engine
 
-    def _log(self, message, *args, level = logging.INFO, **kwargs):
+    def _log(self, message, *args, level=logging.INFO, **kwargs):
         logger.log(
             level,
-            '[%s] [%s] ' + message,
-            self._username, self._tenancy.name, *args, **kwargs
+            "[%s] [%s] " + message,
+            self._username,
+            self._tenancy.name,
+            *args,
+            **kwargs
         )
 
     @convert_exceptions
@@ -299,56 +316,52 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.quotas`.
         """
-        self._log('Fetching tenancy quotas')
+        self._log("Fetching tenancy quotas")
         # Compute provides a way to fetch this information through the SDK, but
         # the floating IP quota obtained through it is rubbish...
         compute_limits = self._connection.compute.limits.absolute
         quotas = [
             dto.Quota(
-                'cpus',
+                "cpus",
                 None,
                 compute_limits.total_cores,
-                compute_limits.total_cores_used
+                compute_limits.total_cores_used,
             ),
             dto.Quota(
-                'ram',
-                'MB',
-                compute_limits.total_ram,
-                compute_limits.total_ram_used
+                "ram", "MB", compute_limits.total_ram, compute_limits.total_ram_used
             ),
             dto.Quota(
-                'machines',
+                "machines",
                 None,
                 compute_limits.instances,
-                compute_limits.instances_used
+                compute_limits.instances_used,
             ),
         ]
         # Get the floating ip quota
         network_quotas = self._connection.network.quotas
         quotas.append(
             dto.Quota(
-                'external_ips',
+                "external_ips",
                 None,
                 network_quotas.floatingip,
                 # Just get the length of the list of IPs
-                len(list(self._connection.network.floatingips.all()))
+                len(list(self._connection.network.floatingips.all())),
             )
         )
         volume_limits = self._connection.block_store.limits.absolute
-        quotas.extend([
-            dto.Quota(
-                'storage',
-                'GB',
-                volume_limits.total_volume_gigabytes,
-                volume_limits.total_gigabytes_used
-            ),
-            dto.Quota(
-                'volumes',
-                None,
-                volume_limits.volumes,
-                volume_limits.volumes_used
-            )
-        ])
+        quotas.extend(
+            [
+                dto.Quota(
+                    "storage",
+                    "GB",
+                    volume_limits.total_volume_gigabytes,
+                    volume_limits.total_gigabytes_used,
+                ),
+                dto.Quota(
+                    "volumes", None, volume_limits.volumes, volume_limits.volumes_used
+                ),
+            ]
+        )
         return quotas
 
     def _from_api_image(self, api_image):
@@ -357,13 +370,13 @@ class ScopedSession(base.ScopedSession):
         """
         return dto.Image(
             api_image.id,
-            getattr(api_image, 'jasmin_type', 'UNKNOWN'),
+            getattr(api_image, "jasmin_type", "UNKNOWN"),
             api_image.name,
-            api_image.visibility == 'public',
+            api_image.visibility == "public",
             # Unless specifically disallowed by a flag, NAT is allowed
-            bool(int(getattr(api_image, 'jasmin_nat_allowed', '1'))),
+            bool(int(getattr(api_image, "jasmin_nat_allowed", "1"))),
             # The image size is specified in bytes. Convert to MB.
-            float(api_image.size) / 1024.0 / 1024.0
+            float(api_image.size) / 1024.0 / 1024.0,
         )
 
     @convert_exceptions
@@ -371,15 +384,15 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.images`.
         """
-        self._log('Fetching available images')
+        self._log("Fetching available images")
         # Fetch from the SDK using our custom image resource
         # Exclude cluster images from the returned list
         images = list(
             image
-            for image in self._connection.image.images.all(status = 'active')
-            if not int(getattr(image, 'jasmin_cluster_image', '0'))
+            for image in self._connection.image.images.all(status="active")
+            if not int(getattr(image, "jasmin_cluster_image", "0"))
         )
-        self._log('Found %s images', len(images))
+        self._log("Found %s images", len(images))
         return tuple(self._from_api_image(i) for i in images)
 
     @convert_exceptions
@@ -400,7 +413,7 @@ class ScopedSession(base.ScopedSession):
             api_flavor.name,
             api_flavor.vcpus,
             api_flavor.ram,
-            api_flavor.disk
+            api_flavor.disk,
         )
 
     @convert_exceptions
@@ -408,13 +421,13 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.sizes`.
         """
-        self._log('Fetching available flavors')
+        self._log("Fetching available flavors")
         flavors = tuple(
             self._from_api_flavor(flavor)
             for flavor in self._connection.compute.flavors.all()
             if not flavor.is_disabled
         )
-        self._log('Found %s flavors', len(flavors))
+        self._log("Found %s flavors", len(flavors))
         return flavors
 
     @convert_exceptions
@@ -430,11 +443,13 @@ class ScopedSession(base.ScopedSession):
         Returns the network connected to the tenant router.
         Assumes a single router with a single tenant network connected.
         """
-        port = self._connection.network.ports.find_by_device_owner('network:router_interface')
+        port = self._connection.network.ports.find_by_device_owner(
+            "network:router_interface"
+        )
         if port:
             return self._connection.network.networks.get(port.network_id)
         else:
-            raise errors.ImproperlyConfiguredError('Could not find tenancy network')
+            raise errors.ImproperlyConfiguredError("Could not find tenancy network")
 
     def _external_network(self):
         """
@@ -443,16 +458,18 @@ class ScopedSession(base.ScopedSession):
         try:
             router = next(self._connection.network.routers.all())
         except StopIteration:
-            raise errors.ImproperlyConfiguredError('Could not find tenancy router.')
-        return self._connection.network.networks.get(router.external_gateway_info['network_id'])
+            raise errors.ImproperlyConfiguredError("Could not find tenancy router.")
+        return self._connection.network.networks.get(
+            router.external_gateway_info["network_id"]
+        )
 
     _POWER_STATES = {
-        0: 'Unknown',
-        1: 'Running',
-        3: 'Paused',
-        4: 'Shut down',
-        6: 'Crashed',
-        7: 'Suspended',
+        0: "Unknown",
+        1: "Running",
+        3: "Paused",
+        4: "Shut down",
+        6: "Crashed",
+        7: "Suspended",
     }
 
     def _from_api_server(self, api_server):
@@ -472,11 +489,11 @@ class ScopedSession(base.ScopedSession):
         # If the nat_allowed metadata is not present, use the image
         # If the image does not exist anymore, assume it is allowed
         try:
-            nat_allowed = bool(int(api_server.metadata['jasmin_nat_allowed']))
+            nat_allowed = bool(int(api_server.metadata["jasmin_nat_allowed"]))
         except (KeyError, TypeError):
             nat_allowed = image.nat_allowed if image else True
         status = api_server.status
-        fault = api_server.fault.get('message', None)
+        fault = api_server.fault.get("message", None)
         task = api_server.task_state
         # Find IP addresses specifically on the tenant network that is connected
         # to the router
@@ -485,12 +502,13 @@ class ScopedSession(base.ScopedSession):
         def ip_of_type(ip_type):
             return next(
                 (
-                    a['addr']
+                    a["addr"]
                     for a in api_server.addresses.get(network.name, [])
-                    if a['version'] == 4 and a['OS-EXT-IPS:type'] == ip_type
+                    if a["version"] == 4 and a["OS-EXT-IPS:type"] == ip_type
                 ),
-                None
+                None,
             )
+
         return dto.Machine(
             api_server.id,
             api_server.name,
@@ -499,16 +517,16 @@ class ScopedSession(base.ScopedSession):
             dto.Machine.Status(
                 getattr(dto.Machine.Status.Type, status, dto.Machine.Status.Type.OTHER),
                 status,
-                _replace_resource_names(fault) if fault else None
+                _replace_resource_names(fault) if fault else None,
             ),
             self._POWER_STATES[api_server.power_state],
             task.capitalize() if task else None,
-            ip_of_type('fixed'),
-            ip_of_type('floating'),
+            ip_of_type("fixed"),
+            ip_of_type("floating"),
             nat_allowed,
-            tuple(v['id'] for v in api_server.attached_volumes),
+            tuple(v["id"] for v in api_server.attached_volumes),
             api_server.user_id,
-            dateutil.parser.parse(api_server.created)
+            dateutil.parser.parse(api_server.created),
         )
 
     @convert_exceptions
@@ -516,13 +534,12 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.machines`.
         """
-        self._log('Fetching available servers')
+        self._log("Fetching available servers")
         # In order to get fault info, we need to use a custom resource definition
         servers = tuple(
-            self._from_api_server(s)
-            for s in self._connection.compute.servers.all()
+            self._from_api_server(s) for s in self._connection.compute.servers.all()
         )
-        self._log('Found %s servers', len(servers))
+        self._log("Found %s servers", len(servers))
         return servers
 
     @convert_exceptions
@@ -535,33 +552,35 @@ class ScopedSession(base.ScopedSession):
         return self._from_api_server(self._connection.compute.servers.get(id))
 
     @convert_exceptions
-    def create_machine(self, name, image, size, ssh_key = None):
+    def create_machine(self, name, image, size, ssh_key=None):
         """
         See :py:meth:`.base.ScopedSession.create_machine`.
         """
         # Start building the server params
-        params = dict(name = name)
+        params = dict(name=name)
         # If an id was given, resolve it to an image
         if not isinstance(image, dto.Image):
             try:
                 image = self.find_image(image)
             except errors.ObjectNotFoundError:
-                raise errors.BadInputError('Invalid image provided')
-        params.update(image_id = str(image.id))
+                raise errors.BadInputError("Invalid image provided")
+        params.update(image_id=str(image.id))
         # To find the metadata elements, we need the raw API image
         # This will load from the cache
         api_image = self._connection.image.images.get(image.id)
         size = size.id if isinstance(size, dto.Size) else size
-        params.update(flavor_id = size)
-        self._log("Creating machine '%s' (image: %s, size: %s)", name, api_image.name, size)
+        params.update(flavor_id=size)
+        self._log(
+            "Creating machine '%s' (image: %s, size: %s)", name, api_image.name, size
+        )
         # Get the networks to use
         # Always use the tenant network that is attached to the router
-        params.update(networks = [{ 'uuid': self._tenant_network().id }])
+        params.update(networks=[{"uuid": self._tenant_network().id}])
         # If the image asks for the backdoor network, attach it
-        if getattr(api_image, 'jasmin_private_if', None):
+        if getattr(api_image, "jasmin_private_if", None):
             if not self._az_backdoor_net_map:
                 raise errors.ImproperlyConfiguredError(
-                    'Backdoor network required by image but not configured.'
+                    "Backdoor network required by image but not configured."
                 )
             # Pick an availability zone at random
             #   random.choice needs something that supports indexing
@@ -570,14 +589,14 @@ class ScopedSession(base.ScopedSession):
             # If the availability zone is "nova" don't specify it, as per the advice
             # in the OpenStack API documentation
             if availability_zone != "nova":
-                params.update(availability_zone = availability_zone)
+                params.update(availability_zone=availability_zone)
             # Create a port on the backdoor network
-            port_params = dict(network_id = backdoor_net)
+            port_params = dict(network_id=backdoor_net)
             # If a vNIC type is specified, add it to the port parameters
             if self._backdoor_vnic_type:
-                port_params['binding:vnic_type'] = self._backdoor_vnic_type
+                port_params["binding:vnic_type"] = self._backdoor_vnic_type
             port = self._connection.network.ports.create(port_params)
-            params['networks'].append({ 'port': port.id })
+            params["networks"].append({"port": port.id})
         # Get the keypair to inject
         if ssh_key:
             # Keypairs are immutable, i.e. once created cannot be changed
@@ -585,29 +604,30 @@ class ScopedSession(base.ScopedSession):
             # allows for us to recognise when a user has changed their key and create
             # a new one
             fingerprint = hashlib.md5(base64.b64decode(ssh_key.split()[1])).hexdigest()
-            key_name = '{}-{}'.format(self._username, fingerprint)
+            key_name = "{}-{}".format(self._username, fingerprint)
             try:
                 # We need to force a fetch so that the keypair is resolved
-                keypair = self._connection.compute.keypairs.get(key_name, force = True)
+                keypair = self._connection.compute.keypairs.get(key_name, force=True)
             except rackit.NotFound:
                 keypair = self._connection.compute.keypairs.create(
-                    name = key_name,
-                    public_key = ssh_key
+                    name=key_name, public_key=ssh_key
                 )
-            params.update(key_name = keypair.name)
+            params.update(key_name=keypair.name)
         # Pass metadata onto the machine from the image if present
-        metadata = dict(jasmin_organisation = self._tenancy.name)
-        metadata.update({
-            item : getattr(api_image, item)
-            for item in {
-                'jasmin_nat_allowed',
-                'jasmin_type',
-                'jasmin_private_if',
-                'jasmin_activ_ver'
+        metadata = dict(jasmin_organisation=self._tenancy.name)
+        metadata.update(
+            {
+                item: getattr(api_image, item)
+                for item in {
+                    "jasmin_nat_allowed",
+                    "jasmin_type",
+                    "jasmin_private_if",
+                    "jasmin_activ_ver",
+                }
+                if getattr(api_image, item, None) is not None
             }
-            if getattr(api_image, item, None) is not None
-        })
-        params.update(metadata = metadata)
+        )
+        params.update(metadata=metadata)
         server = self._connection.compute.servers.create(params)
         return self.find_machine(server.id)
 
@@ -638,7 +658,7 @@ class ScopedSession(base.ScopedSession):
         """
         machine = machine.id if isinstance(machine, dto.Machine) else machine
         self._log("Restarting machine '%s'", machine)
-        self._connection.compute.servers.get(machine).reboot('SOFT')
+        self._connection.compute.servers.get(machine).reboot("SOFT")
         return self.find_machine(machine)
 
     @convert_exceptions
@@ -649,7 +669,7 @@ class ScopedSession(base.ScopedSession):
         machine = machine.id if isinstance(machine, dto.Machine) else machine
         self._log("Deleting machine '%s'", machine)
         # First, delete any associated ports
-        for port in self._connection.network.ports.all(device_id = machine):
+        for port in self._connection.network.ports.all(device_id=machine):
             port._delete()
         self._connection.compute.servers.delete(machine)
         try:
@@ -690,7 +710,7 @@ class ScopedSession(base.ScopedSession):
         # Get the external network to allocate IPs on
         extnet = self._external_network()
         # Create a new floating IP on that network
-        fip = self._connection.network.floatingips.create(floating_network_id = extnet.id)
+        fip = self._connection.network.floatingips.create(floating_network_id=extnet.id)
         self._log("Allocated new floating ip '%s'", fip.floating_ip_address)
         return self._from_api_floatingip(fip)
 
@@ -702,7 +722,9 @@ class ScopedSession(base.ScopedSession):
         self._log("Fetching floating IP details for '%s'", ip)
         fip = self._connection.network.floatingips.find_by_floating_ip_address(ip)
         if not fip:
-            raise errors.ObjectNotFoundError("Could not find external IP '{}'".format(ip))
+            raise errors.ObjectNotFoundError(
+                "Could not find external IP '{}'".format(ip)
+            )
         return self._from_api_floatingip(fip)
 
     @convert_exceptions
@@ -710,37 +732,40 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.attach_external_ip`.
         """
-        machine = machine if isinstance(machine, dto.Machine) else self.find_machine(machine)
+        machine = (
+            machine if isinstance(machine, dto.Machine) else self.find_machine(machine)
+        )
         ip = ip.external_ip if isinstance(ip, dto.ExternalIp) else ip
         # If NATing is not allowed for the machine, bail
         if not machine.nat_allowed:
             raise errors.InvalidOperationError(
-                'Machine is not allowed to have an external IP address.'
+                "Machine is not allowed to have an external IP address."
             )
         self._log("Attaching floating ip '%s' to server '%s'", ip, machine.id)
         # Get the port that attaches the machine to the tenant network
         tenant_net = self._tenant_network()
         port = next(
             self._connection.network.ports.all(
-                device_id = machine.id,
-                network_id = tenant_net.id
+                device_id=machine.id, network_id=tenant_net.id
             ),
-            None
+            None,
         )
         if not port:
             raise errors.ImproperlyConfiguredError(
-                'Machine is not connected to tenancy network.'
+                "Machine is not connected to tenancy network."
             )
         # If there is already a floating IP associated with the port, detach it
         current = self._connection.network.floatingips.find_by_port_id(port.id)
         if current:
-            current._update(port_id = None)
+            current._update(port_id=None)
         # Find the floating IP instance for the given address
         fip = self._connection.network.floatingips.find_by_floating_ip_address(ip)
         if not fip:
-            raise errors.ObjectNotFoundError("Could not find external IP '{}'".format(ip))
+            raise errors.ObjectNotFoundError(
+                "Could not find external IP '{}'".format(ip)
+            )
         # Associate the floating IP with the port
-        return self._from_api_floatingip(fip._update(port_id = port.id))
+        return self._from_api_floatingip(fip._update(port_id=port.id))
 
     @convert_exceptions
     def detach_external_ip(self, ip):
@@ -752,23 +777,25 @@ class ScopedSession(base.ScopedSession):
         # Find the floating IP instance for the given address
         fip = self._connection.network.floatingips.find_by_floating_ip_address(ip)
         if not fip:
-            raise errors.ObjectNotFoundError("Could not find external IP '{}'".format(ip))
+            raise errors.ObjectNotFoundError(
+                "Could not find external IP '{}'".format(ip)
+            )
         # Remove any association for the floating IP
-        return self._from_api_floatingip(fip._update(port_id = None))
+        return self._from_api_floatingip(fip._update(port_id=None))
 
     _VOLUME_STATUSES = {
-        'creating': dto.Volume.Status.CREATING,
-        'available': dto.Volume.Status.AVAILABLE,
-        'reserved': dto.Volume.Status.ATTACHING,
-        'attaching': dto.Volume.Status.ATTACHING,
-        'detaching': dto.Volume.Status.DETACHING,
-        'in-use': dto.Volume.Status.IN_USE,
-        'deleting': dto.Volume.Status.DELETING,
-        'error': dto.Volume.Status.ERROR,
-        'error_deleting': dto.Volume.Status.ERROR,
-        'error_backing-up': dto.Volume.Status.ERROR,
-        'error_restoring': dto.Volume.Status.ERROR,
-        'error_extending': dto.Volume.Status.ERROR,
+        "creating": dto.Volume.Status.CREATING,
+        "available": dto.Volume.Status.AVAILABLE,
+        "reserved": dto.Volume.Status.ATTACHING,
+        "attaching": dto.Volume.Status.ATTACHING,
+        "detaching": dto.Volume.Status.DETACHING,
+        "in-use": dto.Volume.Status.IN_USE,
+        "deleting": dto.Volume.Status.DELETING,
+        "error": dto.Volume.Status.ERROR,
+        "error_deleting": dto.Volume.Status.ERROR,
+        "error_backing-up": dto.Volume.Status.ERROR,
+        "error_restoring": dto.Volume.Status.ERROR,
+        "error_extending": dto.Volume.Status.ERROR,
     }
 
     def _from_api_volume(self, api_volume):
@@ -777,8 +804,7 @@ class ScopedSession(base.ScopedSession):
         """
         # Work out the volume status
         status = self._VOLUME_STATUSES.get(
-            api_volume.status.lower(),
-            dto.Volume.Status.OTHER
+            api_volume.status.lower(), dto.Volume.Status.OTHER
         )
         try:
             attachment = api_volume.attachments[0]
@@ -790,8 +816,8 @@ class ScopedSession(base.ScopedSession):
             api_volume.name or api_volume.id[:13],
             status,
             api_volume.size,
-            attachment['server_id'] if attachment else None,
-            attachment['device'] if attachment else None
+            attachment["server_id"] if attachment else None,
+            attachment["device"] if attachment else None,
         )
 
     @convert_exceptions
@@ -799,12 +825,11 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.volumes`.
         """
-        self._log('Fetching available volumes')
+        self._log("Fetching available volumes")
         volumes = tuple(
-            self._from_api_volume(v)
-            for v in self._connection.block_store.volumes.all()
+            self._from_api_volume(v) for v in self._connection.block_store.volumes.all()
         )
-        self._log('Found %s volumes', len(volumes))
+        self._log("Found %s volumes", len(volumes))
         return volumes
 
     @convert_exceptions
@@ -822,7 +847,7 @@ class ScopedSession(base.ScopedSession):
         See :py:meth:`.base.ScopedSession.create_volume`.
         """
         self._log("Creating volume '%s' (size: %s)", name, size)
-        volume = self._connection.block_store.volumes.create(name = name, size = size)
+        volume = self._connection.block_store.volumes.create(name=name, size=size)
         return self.find_volume(volume.id)
 
     @convert_exceptions
@@ -859,9 +884,9 @@ class ScopedSession(base.ScopedSession):
             )
         self._log("Attaching volume '%s' to server '%s'", volume.id, machine)
         server = self._connection.compute.servers.get(machine)
-        server.volume_attachments.create(volume_id = volume.id)
+        server.volume_attachments.create(volume_id=volume.id)
         # Refresh the volume in the cache
-        self._connection.block_store.volumes.get(volume.id, force = True)
+        self._connection.block_store.volumes.get(volume.id, force=True)
         return self.find_volume(volume.id)
 
     @convert_exceptions
@@ -875,9 +900,11 @@ class ScopedSession(base.ScopedSession):
             return volume
         self._log("Detaching volume '%s' from '%s'", volume.id, volume.machine_id)
         server = self._connection.compute.servers.get(volume.machine_id)
-        server.volume_attachments.find_by_volume_id(volume.id, as_params = False)._delete()
+        server.volume_attachments.find_by_volume_id(
+            volume.id, as_params=False
+        )._delete()
         # Refresh the volume in the cache
-        self._connection.block_store.volumes.get(volume.id, force = True)
+        self._connection.block_store.volumes.get(volume.id, force=True)
         return self.find_volume(volume.id)
 
     @property
@@ -886,18 +913,17 @@ class ScopedSession(base.ScopedSession):
         Returns the cluster manager for the tenancy.
         """
         # Lazily instantiate the cluster manager the first time it is asked for.
-        if not hasattr(self, '_cluster_manager'):
+        if not hasattr(self, "_cluster_manager"):
             if self._cluster_engine:
                 self._cluster_manager = self._cluster_engine.create_manager(
-                    self._username,
-                    self._tenancy
+                    self._username, self._tenancy
                 )
             else:
                 self._cluster_manager = None
         # If there is still no cluster manager, clusters are not supported
         if not self._cluster_manager:
             raise errors.UnsupportedOperationError(
-                'Clusters are not supported for this tenancy.'
+                "Clusters are not supported for this tenancy."
             )
         return self._cluster_manager
 
@@ -921,41 +947,42 @@ class ScopedSession(base.ScopedSession):
         """
         # Remove injected parameters from the cluster params
         params = {
-            k: v
-            for k, v in cluster.parameter_values.items()
-            if k != 'cluster_network'
+            k: v for k, v in cluster.parameter_values.items() if k != "cluster_network"
         }
         # Add any tags attached to the stack
         try:
-            stack = self._connection.orchestration.stacks.find_by_stack_name(cluster.name)
+            stack = self._connection.orchestration.stacks.find_by_stack_name(
+                cluster.name
+            )
         except rackit.NotFound:
             stack = None
         # We use this format because tags might exist on the stack but be None
-        stack_tags = tuple(getattr(stack, 'tags', None) or [])
-        original_error = (cluster.error_message or '').lower()
+        stack_tags = tuple(getattr(stack, "tags", None) or [])
+        original_error = (cluster.error_message or "").lower()
         # Convert quota-related error messages based on known OpenStack errors
-        if any(m in original_error for m in {'quota exceeded', 'exceedsavailablequota'}):
-            if 'floatingip' in original_error:
+        if any(
+            m in original_error for m in {"quota exceeded", "exceedsavailablequota"}
+        ):
+            if "floatingip" in original_error:
                 error_message = (
-                    'Could not find an external IP for deployment. '
-                    'Please ensure an external IP is available and try again.'
+                    "Could not find an external IP for deployment. "
+                    "Please ensure an external IP is available and try again."
                 )
             else:
                 error_message = (
-                    'Requested resources exceed at least one quota. '
-                    'Please check your tenancy quotas and try again.'
+                    "Requested resources exceed at least one quota. "
+                    "Please check your tenancy quotas and try again."
                 )
         elif cluster.error_message:
             error_message = (
-                'Error during cluster configuration. '
-                'Please contact support.'
+                "Error during cluster configuration. " "Please contact support."
             )
         else:
             error_message = None
         return cluster._replace(
-            parameter_values = params,
-            tags = cluster.tags + stack_tags,
-            error_message = error_message
+            parameter_values=params,
+            tags=cluster.tags + stack_tags,
+            error_message=error_message,
         )
 
     @convert_exceptions
@@ -963,25 +990,20 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.clusters`.
         """
-        return tuple(
-            self._fixup_cluster(c)
-            for c in self.cluster_manager.clusters()
-        )
+        return tuple(self._fixup_cluster(c) for c in self.cluster_manager.clusters())
 
     @convert_exceptions
     def find_cluster(self, id):
         """
         See :py:meth:`.base.ScopedSession.find_cluster`.
         """
-        return self._fixup_cluster(
-            self.cluster_manager.find_cluster(id)
-        )
+        return self._fixup_cluster(self.cluster_manager.find_cluster(id))
 
     def _cluster_credential(self):
         return dict(
-            auth_url = self._connection.auth_url,
-            project_id = self._connection.project_id,
-            token = self._connection.token
+            auth_url=self._connection.auth_url,
+            project_id=self._connection.project_id,
+            token=self._connection.token,
         )
 
     @convert_exceptions
@@ -992,16 +1014,12 @@ class ScopedSession(base.ScopedSession):
         params = self.validate_cluster_params(cluster_type, params)
         # Inject information about the networks to use
         params.update(
-            cluster_floating_network = self._external_network().name,
-            cluster_network = self._tenant_network().name
+            cluster_floating_network=self._external_network().name,
+            cluster_network=self._tenant_network().name,
         )
         return self._fixup_cluster(
             self.cluster_manager.create_cluster(
-                name,
-                cluster_type,
-                params,
-                ssh_key,
-                self._cluster_credential()
+                name, cluster_type, params, ssh_key, self._cluster_credential()
             )
         )
 
@@ -1016,11 +1034,9 @@ class ScopedSession(base.ScopedSession):
             self.cluster_manager.update_cluster(
                 cluster,
                 self.validate_cluster_params(
-                    cluster.cluster_type,
-                    params,
-                    cluster.parameter_values
+                    cluster.cluster_type, params, cluster.parameter_values
                 ),
-                self._cluster_credential()
+                self._cluster_credential(),
             )
         )
 
@@ -1030,10 +1046,7 @@ class ScopedSession(base.ScopedSession):
         See :py:meth:`.base.ScopedSession.patch_cluster`.
         """
         return self._fixup_cluster(
-            self.cluster_manager.patch_cluster(
-                cluster,
-                self._cluster_credential()
-            )
+            self.cluster_manager.patch_cluster(cluster, self._cluster_credential())
         )
 
     @convert_exceptions
@@ -1042,10 +1055,7 @@ class ScopedSession(base.ScopedSession):
         See :py:meth:`.base.ScopedSession.delete_cluster`.
         """
         return self._fixup_cluster(
-            self.cluster_manager.delete_cluster(
-                cluster,
-                self._cluster_credential()
-            )
+            self.cluster_manager.delete_cluster(cluster, self._cluster_credential())
         )
 
     @convert_exceptions
@@ -1056,5 +1066,5 @@ class ScopedSession(base.ScopedSession):
         # Make sure the underlying api connection is closed
         self._connection.close()
         # Also close the cluster manager if one has been created
-        if getattr(self, '_cluster_manager', None):
+        if getattr(self, "_cluster_manager", None):
             self._cluster_manager.close()

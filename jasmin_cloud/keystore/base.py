@@ -9,6 +9,7 @@ class KeyStore:
 
     A key store allows the locating of an SSH public key for a username.
     """
+
     def get_key(self, username):
         """
         Returns the SSH public key for the given username.
