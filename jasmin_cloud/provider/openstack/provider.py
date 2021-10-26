@@ -2,6 +2,10 @@
 This module contains the provider implementation for OpenStack.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 import base64
 import functools
 import hashlib

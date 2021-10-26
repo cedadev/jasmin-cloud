@@ -2,6 +2,10 @@
 Django REST framework serializers for objects from the :py:mod:`~.cloud.dto` package.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 import collections
 
 from django.urls import reverse

@@ -2,6 +2,10 @@
 Module containing service and resource definitions for the OpenStack compute API.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 from rackit import EmbeddedResource, Endpoint, NestedResource, RootResource
 
 from .core import (

@@ -2,6 +2,10 @@
 Root URL configuration for the JASMIN Cloud API site.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 from django.http import HttpResponse
 from django.urls import include, path
 

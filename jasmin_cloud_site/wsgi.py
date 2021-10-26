@@ -7,6 +7,10 @@ For more information on this file, see
 https://docs.djangoproject.com/en/1.10/howto/deployment/wsgi/
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 import os
 
 from django.core.wsgi import get_wsgi_application

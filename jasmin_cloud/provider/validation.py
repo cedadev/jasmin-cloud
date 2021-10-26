@@ -2,6 +2,10 @@
 Module providing validation utilities for cloud providers.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 import functools
 
 import voluptuous as v
