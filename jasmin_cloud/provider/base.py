@@ -2,6 +2,10 @@
 This module defines the interface for a cloud provider.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 from . import dto, errors, validation
 
 
@@ -9,6 +13,7 @@ class Provider:
     """
     Class for a cloud provider.
     """
+
     def authenticate(self, username, password):
         """
         Creates a new unscoped session for this provider using the given credentials.
@@ -43,6 +48,7 @@ class UnscopedSession:
     Class for an authenticated session with a cloud provider. It is unscoped in
     the sense that is not bound to a particular tenancy.
     """
+
     def token(self):
         """
         Returns the token for this session.
@@ -119,6 +125,7 @@ class ScopedSession:
     """
     Class for a tenancy-scoped session.
     """
+
     def quotas(self):
         """
         Returns quota information for the tenancy.
@@ -509,7 +516,7 @@ class ScopedSession:
             "Operation not supported for provider '{}'".format(self.provider_name)
         )
 
-    def validate_cluster_params(self, cluster_type, params, prev_params = {}):
+    def validate_cluster_params(self, cluster_type, params, prev_params={}):
         """
         Validates the given parameter values against the given cluster type.
 
@@ -529,9 +536,7 @@ class ScopedSession:
         if not isinstance(cluster_type, dto.ClusterType):
             cluster_type = self.find_cluster_type(cluster_type)
         validator = validation.build_validator(
-            self,
-            cluster_type.parameters,
-            prev_params
+            self, cluster_type.parameters, prev_params
         )
         return validator(params)
 

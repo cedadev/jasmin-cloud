@@ -2,20 +2,24 @@
 Settings helpers for the ``jasmin_cloud`` Django app.
 """
 
-from django.conf import settings
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
 
-from settings_object import SettingsObject, Setting, ObjectFactorySetting
+from django.conf import settings
+from settings_object import ObjectFactorySetting, Setting, SettingsObject
 
 
 class JasminCloudSettings(SettingsObject):
     """
     Settings object for the ``JASMIN_CLOUD`` setting.
     """
+
     #: The name of the cookie used to store tokens
-    TOKEN_COOKIE_NAME = Setting(default = 'provider-token')
+    TOKEN_COOKIE_NAME = Setting(default="provider-token")
     #: Indicates whether the token cookie should be restricted to secure connections
     #: Should always be True in production
-    TOKEN_COOKIE_SECURE = Setting(default = True)
+    TOKEN_COOKIE_SECURE = Setting(default=True)
     #: Cloud provider configuration
     PROVIDER = ObjectFactorySetting()
     #: SSH key store configuration
@@ -27,4 +31,4 @@ class JasminCloudSettings(SettingsObject):
     CURRENT_CLOUD = Setting()
 
 
-cloud_settings = JasminCloudSettings('JASMIN_CLOUD')
+cloud_settings = JasminCloudSettings("JASMIN_CLOUD")

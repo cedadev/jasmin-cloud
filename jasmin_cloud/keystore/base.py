@@ -2,6 +2,10 @@
 Base definitions for the ``jasmin_cloud.keystore`` package.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 
 class KeyStore:
     """
@@ -9,6 +13,7 @@ class KeyStore:
 
     A key store allows the locating of an SSH public key for a username.
     """
+
     def get_key(self, username):
         """
         Returns the SSH public key for the given username.

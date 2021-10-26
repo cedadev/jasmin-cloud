@@ -2,11 +2,16 @@
 This module defines the base class for cluster managers.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 
 class Engine:
     """
     Base class for a cluster engine.
     """
+
     def create_manager(self, username, tenancy):
         """
         Creates a cluster manager for the given tenancy.
@@ -25,6 +30,7 @@ class ClusterManager:
     """
     Base class for a tenancy-scoped cluster manager.
     """
+
     def cluster_types(self):
         """
         Lists the available cluster types.

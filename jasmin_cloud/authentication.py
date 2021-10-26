@@ -2,6 +2,10 @@
 Django REST Framwork authentication backend for the jasmin_cloud app.
 """
 
+__author__ = "Matt Pryor"
+__copyright__ = "Copyright 2020 United Kingdom Research and Innovation"
+__license__ = "BSD - see LICENSE file in top-level package directory"
+
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -13,6 +17,7 @@ class AuthenticatedUser:
     """
     Fake user that is returned to represent an authenticated user
     """
+
     def __init__(self, username):
         self.username = username
         self.is_authenticated = True
@@ -25,6 +30,7 @@ class TokenCookieAuthentication(BaseAuthentication):
     """
     Authentication backend that uses a token cookie for authentication.
     """
+
     def authenticate(self, request):
         # First, see if the token cookie is set
         token = request.get_signed_cookie(cloud_settings.TOKEN_COOKIE_NAME, None)
