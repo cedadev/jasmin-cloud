@@ -356,7 +356,7 @@ class ClusterManager(base.ClusterManager):
         )
         self._log("Executing job for inventory '%s'", inventory.name)
         # Once everything is updated, launch a job
-        template_credentials = job_template.credentials()
+        template_credentials = job_template.credentials.all()
         print(template_credentials)
         print(dir(template_credentials))
         job_template.launch(
