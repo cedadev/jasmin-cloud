@@ -358,9 +358,7 @@ class ClusterManager(base.ClusterManager):
         # Once everything is updated, launch a job
         template_credentials = job_template.credentials.all()
         credential_ids = [x.id for x in template_credentials]
-        print(credential_ids)
         credential_ids.append(credential.id)
-        print(credential_ids)
         job_template.launch(
             inventory=inventory.id,
             credentials=credential_ids,
