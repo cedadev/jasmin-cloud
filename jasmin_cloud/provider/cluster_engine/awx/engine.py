@@ -357,15 +357,13 @@ class ClusterManager(base.ClusterManager):
         self._log("Executing job for inventory '%s'", inventory.name)
         # Once everything is updated, launch a job
         template_credentials = job_template.credentials.all()
-        template_credential_ids = [x for x in template_credentials]
-        print(template_credential_ids)
-        print(dir(template_credential_ids))
-        print(template_credential_ids[0])
-        print(dir(template_credential_ids[0]))
-        template_credential_ids = [x.id for x in template_credentials]
+        credential_ids = [x.id for x in template_credentials]
+        print(credential_ids)
+        credential_ids.append(credential.id)
+        print(credential_ids)
         job_template.launch(
             inventory=inventory.id,
-            credentials=[credential.id, *template_credential_ids],
+            credentials=credential_ids,
             extra_vars=json.dumps(extra_vars),
         )
         # Evict the inventory from the cache as it has changed
