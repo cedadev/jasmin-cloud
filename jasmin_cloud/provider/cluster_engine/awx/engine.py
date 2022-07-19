@@ -377,6 +377,7 @@ class ClusterManager(base.ClusterManager):
         template_credentials = job_template.credentials.all()
         # Create a cluster SSH key if required.
         cluster_sshkey_id = variable_data.get("cluster_sshkey_id", False)
+        print(extra_vars)
         if not cluster_sshkey_id:
             key = rsa.generate_private_key(
                 backend=crypto_default_backend(), public_exponent=65537, key_size=4096
