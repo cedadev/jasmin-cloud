@@ -385,11 +385,13 @@ class ClusterManager(base.ClusterManager):
                 crypto_serialization.Encoding.PEM,
                 crypto_serialization.PrivateFormat.PKCS8,
                 crypto_serialization.NoEncryption(),
-            )
-            public_key = key.public_key().public_bytes(
-                crypto_serialization.Encoding.OpenSSH,
-                crypto_serialization.PublicFormat.OpenSSH,
-            )
+            ).decode("utf-8")
+            public_key = (
+                key.public_key().public_bytes(
+                    crypto_serialization.Encoding.OpenSSH,
+                    crypto_serialization.PublicFormat.OpenSSH,
+                )
+            ).decode("utf-8")
             cluster_sshkey = self._connection.credentials.create(
                 name=f"sshkey-{str(uuid.uuid4())}",
                 organization=self._organisation.id,
