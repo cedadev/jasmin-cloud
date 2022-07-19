@@ -375,47 +375,46 @@ class ClusterManager(base.ClusterManager):
         self._log("Executing job for inventory '%s'", inventory.name)
         template_credentials = job_template.credentials.all()
 
-        # If the identity manager has an SSH key, use that ssh key.
-        identity_stack_name = variable_data.get("identity_stack_name", False)
-        if identity_stack_name:
-            clusters = self.clusters()
-            print(clusters)
-            identity_stack_inventory = self._connection.inventories.find_by_name(
-                identity_stack_name
-            )
-            print(identity_stack_inventory)
-            variable_data = inventory.variable_data._as_dict()
-            inventory_variables[
-                "cluster_sshkey_id"
-            ] = identity_stack_inventory.variable_data._as_dict()["cluster_sshkey_id"]
-            variable_data.update(inventory_variables)
-            inventory.variable_data._update(variable_data)
-
-        # Otherwise create a cluster SSH key if required.
+        # Otherwise create or link cluster ssh key as required.
         cluster_sshkey_id = variable_data.get("cluster_sshkey_id", False)
-        print(variable_data)
         if not cluster_sshkey_id:
-            key = rsa.generate_private_key(
-                backend=crypto_default_backend(), public_exponent=65537, key_size=4096
-            )
-            private_key = key.private_bytes(
-                crypto_serialization.Encoding.PEM,
-                crypto_serialization.PrivateFormat.PKCS8,
-                crypto_serialization.NoEncryption(),
-            ).decode("utf-8")
-            public_key = (
-                key.public_key().public_bytes(
-                    crypto_serialization.Encoding.OpenSSH,
-                    crypto_serialization.PublicFormat.OpenSSH,
+            # If the identity manager has an SSH key, use that ssh key.
+            identity_stack_name = variable_data.get("identity_stack_name", False)
+            if identity_stack_name:
+                clusters = self.clusters()
+                print(clusters)
+                identity_stack_cluster = [
+                    x for x in clusters if x.name == identity_stack_name
+                ][0]
+                print(identity_stack_cluster)
+                cluster_sshkey_id = identity_stack_cluster.parameter_values[
+                    "cluster_sshkey_id"
+                ]
+                print(cluster_sshkey_id)
+            else:
+                key = rsa.generate_private_key(
+                    backend=crypto_default_backend(),
+                    public_exponent=65537,
+                    key_size=4096,
                 )
-            ).decode("utf-8")
-            cluster_sshkey = self._connection.credentials.create(
-                name=f"sshkey-{str(uuid.uuid4())}",
-                organization=self._organisation.id,
-                credential_type=self._sshkey_credential_type.id,
-                inputs={"public_key": public_key, "private_key": private_key},
-            )
-            cluster_sshkey_id = cluster_sshkey.id
+                private_key = key.private_bytes(
+                    crypto_serialization.Encoding.PEM,
+                    crypto_serialization.PrivateFormat.PKCS8,
+                    crypto_serialization.NoEncryption(),
+                ).decode("utf-8")
+                public_key = (
+                    key.public_key().public_bytes(
+                        crypto_serialization.Encoding.OpenSSH,
+                        crypto_serialization.PublicFormat.OpenSSH,
+                    )
+                ).decode("utf-8")
+                cluster_sshkey = self._connection.credentials.create(
+                    name=f"sshkey-{str(uuid.uuid4())}",
+                    organization=self._organisation.id,
+                    credential_type=self._sshkey_credential_type.id,
+                    inputs={"public_key": public_key, "private_key": private_key},
+                )
+                cluster_sshkey_id = cluster_sshkey.id
             # Inject cluster sshkey id into inventory variables.
             variable_data = inventory.variable_data._as_dict()
             inventory_variables["cluster_sshkey_id"] = cluster_sshkey_id
