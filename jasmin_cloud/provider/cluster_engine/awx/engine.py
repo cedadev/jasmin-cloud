@@ -400,7 +400,9 @@ class ClusterManager(base.ClusterManager):
             )
             cluster_sshkey_id = cluster_sshkey.id
             variable_data = inventory.variable_data._as_dict()
+            print(variable_data)
             variable_data["cluster_sshkey_id"] = cluster_sshkey_id
+            print(variable_data)
             inventory.variable_data._update(variable_data)
 
         credential_ids = [x.id for x in template_credentials]
