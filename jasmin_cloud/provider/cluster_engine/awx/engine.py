@@ -373,11 +373,24 @@ class ClusterManager(base.ClusterManager):
             inputs=credential_inputs,
         )
         self._log("Executing job for inventory '%s'", inventory.name)
-
         template_credentials = job_template.credentials.all()
-        # Create a cluster SSH key if required.
+
+        # If the identity manager has an SSH key, use that ssh key.
+        identity_stack_name = variable_data.get("identity_stack_name", False)
+        if identity_stack_name:
+            identity_stack_inventory = self._connection.inventories.find_by_name(
+                identity_stack_name
+            )
+            variable_data = inventory.variable_data._as_dict()
+            inventory_variables[
+                "cluster_sshkey_id"
+            ] = identity_stack_inventory.variable_data._as_dict()["cluster_sshkey_id"]
+            variable_data.update(inventory_variables)
+            inventory.variable_data._update(variable_data)
+
+        # Otherwise create a cluster SSH key if required.
         cluster_sshkey_id = variable_data.get("cluster_sshkey_id", False)
-        print(extra_vars)
+        print(variable_data)
         if not cluster_sshkey_id:
             key = rsa.generate_private_key(
                 backend=crypto_default_backend(), public_exponent=65537, key_size=4096
