@@ -399,10 +399,10 @@ class ClusterManager(base.ClusterManager):
                 inputs={"public_key": public_key, "private_key": private_key},
             )
             cluster_sshkey_id = cluster_sshkey.id
+            # Inject cluster sshkey id into inventory variables.
             variable_data = inventory.variable_data._as_dict()
-            print(variable_data)
-            variable_data["cluster_sshkey_id"] = cluster_sshkey_id
-            print(variable_data)
+            inventory_variables["cluster_sshkey_id"] = cluster_sshkey_id
+            variable_data.update(inventory_variables)
             inventory.variable_data._update(variable_data)
 
         credential_ids = [x.id for x in template_credentials]
