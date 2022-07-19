@@ -11,6 +11,11 @@ import uuid
 
 import dateutil.parser
 import rackit
+from cryptography.hazmat.backends import \
+    default_backend as crypto_default_backend
+from cryptography.hazmat.primitives import \
+    serialization as crypto_serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from ... import dto, errors
 from .. import base
@@ -38,6 +43,7 @@ class Engine(base.Engine):
         username,
         password,
         credential_type,
+        sshkey_credential_type,
         verify_ssl=True,
         template_inventory="openstack",
     ):
@@ -47,6 +53,7 @@ class Engine(base.Engine):
         self._verify_ssl = verify_ssl
         self._template_inventory = template_inventory
         self._credential_type = credential_type
+        self._sshkey_credential_type = sshkey_credential_type
 
     def create_manager(self, username, tenancy):
         """
@@ -74,6 +81,14 @@ class Engine(base.Engine):
                 raise errors.ImproperlyConfiguredError(
                     "Could not find credential type."
                 )
+
+            sshkey_credential_type = connection.credential_types.find_by_name(
+                self._sshkey_credential_type
+            )
+            if not sshkey_credential_type:
+                raise errors.ImproperlyConfiguredError(
+                    "Could not find credential type."
+                )
         except:
             connection.close()
             raise
@@ -85,6 +100,7 @@ class Engine(base.Engine):
                 connection,
                 organisation,
                 credential_type,
+                sshkey_credential_type,
                 template_inventory,
                 team,
             )
@@ -109,6 +125,7 @@ class ClusterManager(base.ClusterManager):
         connection,
         organisation,
         credential_type,
+        sshkey_credential_type,
         template_inventory,
         team,
     ):
@@ -116,6 +133,7 @@ class ClusterManager(base.ClusterManager):
         self._connection = connection
         self._organisation = organisation
         self._credential_type = credential_type
+        self._sshkey_credential_type = sshkey_credential_type
         self._template_inventory = template_inventory
         self._team = team
 
@@ -126,7 +144,7 @@ class ClusterManager(base.ClusterManager):
             self._username,
             self._team.name,
             *args,
-            **kwargs
+            **kwargs,
         )
 
     def _from_job_template(self, job_template):
@@ -355,10 +373,36 @@ class ClusterManager(base.ClusterManager):
             inputs=credential_inputs,
         )
         self._log("Executing job for inventory '%s'", inventory.name)
-        # Once everything is updated, launch a job
+
         template_credentials = job_template.credentials.all()
+        # Create a cluster SSH key if required.
+        cluster_sshkey_id = variable_data.get("cluster_sshkey_id", False)
+        if not cluster_sshkey_id:
+            key = rsa.generate_private_key(
+                backend=crypto_default_backend(), public_exponent=65537, key_size=4096
+            )
+            private_key = key.private_bytes(
+                crypto_serialization.Encoding.PEM,
+                crypto_serialization.PrivateFormat.PKCS8,
+                crypto_serialization.NoEncryption(),
+            )
+            public_key = key.public_key().public_bytes(
+                crypto_serialization.Encoding.OpenSSH,
+                crypto_serialization.PublicFormat.OpenSSH,
+            )
+            cluster_sshkey = self._connection.credentials.create(
+                name=f"sshkey-{str(uuid.uuid4())}",
+                organization=self._organisation.id,
+                credential_type=self._sshkey_credential_type.id,
+                inputs={"public_key": public_key, "private_key": private_key},
+            )
+            cluster_sshkey_id = cluster_sshkey.id
+            inventory.variable_data._update({"cluster_sshkey_id": cluster_sshkey_id})
+
         credential_ids = [x.id for x in template_credentials]
+        credential_ids.append(cluster_sshkey_id)
         credential_ids.append(credential.id)
+        # Once everything is updated, launch a job
         job_template.launch(
             inventory=inventory.id,
             credentials=credential_ids,
