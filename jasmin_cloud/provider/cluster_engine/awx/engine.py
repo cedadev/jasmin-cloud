@@ -381,6 +381,7 @@ class ClusterManager(base.ClusterManager):
             identity_stack_inventory = self._connection.inventories.find_by_name(
                 identity_stack_name
             )
+            print(identity_stack_inventory)
             variable_data = inventory.variable_data._as_dict()
             inventory_variables[
                 "cluster_sshkey_id"
