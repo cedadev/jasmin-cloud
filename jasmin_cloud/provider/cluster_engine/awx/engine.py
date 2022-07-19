@@ -378,6 +378,8 @@ class ClusterManager(base.ClusterManager):
         # If the identity manager has an SSH key, use that ssh key.
         identity_stack_name = variable_data.get("identity_stack_name", False)
         if identity_stack_name:
+            clusters = self.clusters()
+            print(clusters)
             identity_stack_inventory = self._connection.inventories.find_by_name(
                 identity_stack_name
             )
