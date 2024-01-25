@@ -1,0 +1,12 @@
+# Run this to upgrade deps: pip-compile --upgrade --no-annotate --strip-extras requirements.in
+
+Django>=3.1.12,<3.3
+docutils==0.16
+python-dateutil>=2.8.1,<2.9
+djangorestframework>=3.11.2,<3.12
+git+https://github.com/cedadev/django-settings-object.git@01351828ae73cea07404de0a38d5d868ecb75b59#egg=django_settings_object
+git+https://github.com/cedadev/jasmin-ldap.git@ad21e8f7d8d82e33e5bf48820bf5f9e630a53d8d#egg=jasmin_ldap
+PyYAML>=5.4,<6.1
+voluptuous>=0.11.7,<0.12
+requests>=2.25.1,<3
+git+https://github.com/cedadev/rackit.git@dc510955e2bd37220ab6a7f4b1ea71432aa48314#egg=rackit
