@@ -12,7 +12,7 @@ django-settings-object @ git+https://github.com/cedadev/django-settings-object.g
 djangorestframework==3.11.2
 docutils==0.16
 idna==3.6
-jasmin-ldap @ git+https://github.com/cedadev/jasmin-ldap.git@ad21e8f7d8d82e33e5bf48820bf5f9e630a53d8d
+jasmin-ldap @ git+https://github.com/cedadev/jasmin-ldap.git@25550e8c71abba9be2028e5df86015ac11455671
 ldap3==2.9.1
 pyasn1==0.5.1
 python-dateutil==2.8.2
