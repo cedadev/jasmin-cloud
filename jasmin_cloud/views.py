@@ -6,7 +6,7 @@ import logging, functools
 
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from django.utils.encoding import smart_text
+from django.utils.encoding import smart_str
 
 from docutils import core
 
@@ -30,7 +30,7 @@ def get_view_description(view_cls, html = False):
     Sphinx-generated API views.
     """
     description = view_cls.__doc__ or ''
-    description = formatting.dedent(smart_text(description))
+    description = formatting.dedent(smart_str(description))
     if html:
         # Get just the HTML parts corresponding to the docstring
         parts = core.publish_parts(source = description, writer_name = 'html')
