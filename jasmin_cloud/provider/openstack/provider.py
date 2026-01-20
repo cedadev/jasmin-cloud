@@ -468,6 +468,11 @@ class ScopedSession(base.ScopedSession):
             size = self.find_size(api_server.flavor.id)
         except (AttributeError, errors.ObjectNotFoundError):
             size = None
+        # Try to get provisioned_by_caas from the machine metadata
+        try:
+            provisioned_by_caas = bool(int(api_server.metadata['jasmin_provisioned_by_caas']))
+        except (KeyError, TypeError):
+            provisioned_by_caas = False
         # Try to get nat_allowed from the machine metadata
         # If the nat_allowed metadata is not present, use the image
         # If the image does not exist anymore, assume it is allowed
@@ -508,7 +513,8 @@ class ScopedSession(base.ScopedSession):
             nat_allowed,
             tuple(v['id'] for v in api_server.attached_volumes),
             api_server.user_id,
-            dateutil.parser.parse(api_server.created)
+            dateutil.parser.parse(api_server.created),
+            provisioned_by_caas
         )
 
     @convert_exceptions
@@ -646,14 +652,15 @@ class ScopedSession(base.ScopedSession):
         """
         See :py:meth:`.base.ScopedSession.delete_machine`.
         """
-        machine = machine.id if isinstance(machine, dto.Machine) else machine
-        self._log("Deleting machine '%s'", machine)
+        machine = machine if isinstance(machine, dto.Machine) else self.find_machine(machine)
+        self._log("Deleting machine '%s'", machine.id)
         # First, delete any associated ports
-        for port in self._connection.network.ports.all(device_id = machine):
-            port._delete()
-        self._connection.compute.servers.delete(machine)
+        if not machine.provisioned_by_caas:
+            for port in self._connection.network.ports.all(device_id = machine.id):
+                port._delete()
+        self._connection.compute.servers.delete(machine.id)
         try:
-            return self.find_machine(machine)
+            return self.find_machine(machine.id)
         except errors.ObjectNotFoundError:
             return None
 
